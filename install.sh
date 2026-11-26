@@ -17,7 +17,7 @@ clone_args=(--depth 1)
 if [[ -n "$ref" ]]; then
     clone_args+=(--branch "$ref")
 fi
-git clone "${clone_args[@]}" -- "${MYGERRIT_CLI_REPO:-git@gitlab.meizu.com:cong.sui/mygerrit-cli.git}" "$install_tmp/mygerrit-cli"
+git clone "${clone_args[@]}" -- "${MYGERRIT_CLI_REPO:-https://github.com/CStyle1024/mygerrit-cli.git}" "$install_tmp/mygerrit-cli"
 uv tool install --reinstall "$install_tmp/mygerrit-cli"
 
 uv_bin="$(uv tool dir --bin)"

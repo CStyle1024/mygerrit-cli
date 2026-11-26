@@ -4,13 +4,13 @@
 
 ## 安装
 
-需要 Bash、Git、`uv` 和 GitLab 仓库访问权限。发布安装脚本后，可执行：
+需要 Bash、Git、`uv` 和 GitHub 仓库访问权限。发布安装脚本后，可执行：
 
 ```bash
-curl -fsSL https://gitlab.meizu.com/cong.sui/mygerrit-cli/-/raw/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/CStyle1024/mygerrit-cli/main/install.sh | bash
 ```
 
-已有源码时可直接运行 `bash install.sh`。脚本默认通过 SSH 浅克隆默认分支，使用 `MYGERRIT_CLI_REPO` 可指定仓库地址，使用 `MYGERRIT_CLI_REF` 可选择分支或标签。安装结束后清理临时源码目录。如果终端找不到命令，运行 `uv tool update-shell` 后重新打开终端。
+已有源码时可直接运行 `bash install.sh`。脚本默认通过 HTTPS 浅克隆 GitHub 仓库的默认分支，使用 `MYGERRIT_CLI_REPO` 可指定仓库地址，使用 `MYGERRIT_CLI_REF` 可选择分支或标签。安装结束后清理临时源码目录。如果终端找不到命令，运行 `uv tool update-shell` 后重新打开终端。
 
 也可以在源码目录中用 pip 安装：
 
