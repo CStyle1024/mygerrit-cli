@@ -4,6 +4,16 @@
 
 ## 安装
 
+需要 Bash、Git、`uv` 和 GitLab 仓库访问权限。发布安装脚本后，可执行：
+
+```bash
+curl -fsSL https://gitlab.meizu.com/cong.sui/mygerrit-cli/-/raw/main/install.sh | bash
+```
+
+已有源码时可直接运行 `bash install.sh`。脚本默认通过 SSH 浅克隆默认分支，使用 `MYGERRIT_CLI_REPO` 可指定仓库地址，使用 `MYGERRIT_CLI_REF` 可选择分支或标签。安装结束后清理临时源码目录。如果终端找不到命令，运行 `uv tool update-shell` 后重新打开终端。
+
+也可以在源码目录中用 pip 安装：
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -16,6 +26,22 @@ mygerrit-cli --tool-info
 也可从源码执行 `PYTHONPATH=src python3 -m mygerrit_cli --help`。发行包名与命令名均为 mygerrit-cli。
 
 ## 配置
+
+### 交互式初始化
+
+在终端中先加载已有的认证环境变量，再运行：
+
+```bash
+mygerrit-cli config init
+mygerrit-cli doctor
+```
+
+向导询问 REST 地址、认证方式和环境变量名。Bearer 需要 token 变量名，Basic 需要用户名和密码或 API token 的变量名。验证成功后配置保存在 `${XDG_CONFIG_HOME:-$HOME/.config}/mygerrit-cli/config.json`，文件仅保存引用。以后执行命令时仍要提供对应的环境变量。
+
+留空服务器名称可建立单服务配置。使用名称可登记多台 Gerrit，之后通过 `mygerrit-cli --server NAME doctor` 或相应查询命令选择。现有独立单服务配置在添加具名服务器时保留为 `default`。探测仅使用 REST。内网 HTTP 发送凭据需要显式确认，Git 远端及 SSH 设置仍由仓库管理。
+
+普通命令的配置优先级为 `--config`、`ISSUE_RESOLVER_CONFIG`、独立配置、当前目录的 `project.json`。初始化始终只写独立配置。身份验证不检查写入权限。
+
 
 使用 `--config /absolute/path/config.json`，或设置 `ISSUE_RESOLVER_CONFIG`；默认读取当前目录的 project.json。可使用完整工作流配置，也可只包含 gerrit 服务配置。认证使用环境变量或文件引用，不把凭据写进 JSON。
 

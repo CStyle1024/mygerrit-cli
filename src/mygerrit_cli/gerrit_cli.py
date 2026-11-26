@@ -8,6 +8,7 @@ from . import __version__
 from .common import ToolInfoAction, CliError, EXIT_CODES, Parser, digest, load_config, result, gerrit_config
 from .actions import load_action
 from .http import Client
+from .config_init import add_commands, config_path, initialize, connection_info
 from .gerrit import Gerrit, preview_upload
 
 
@@ -16,8 +17,10 @@ def parser():
     p.add_argument('--server', help='Named Gerrit server from gerrits')
     p.add_argument('--version', action='version', version='mygerrit-cli ' + __version__)
     p.add_argument('--tool-info', action=ToolInfoAction, nargs=0, const=json.dumps({'schema_version': 1, 'distribution': 'mygerrit-cli', 'command': 'mygerrit-cli', 'version': __version__, 'result_schema': 1}))
-    p.set_defaults(config=os.environ.get('ISSUE_RESOLVER_CONFIG', 'project.json'), format='json', timeout=30, state_dir=None)
+    p.set_defaults(config=None, format='json', timeout=30, state_dir=None)
     commands = p.add_subparsers(dest='command', required=True)
+    add_commands(commands)
+    commands.add_parser('doctor', help='Read-only Gerrit identity and version check')
     changes = commands.add_parser('changes').add_subparsers(dest='verb', required=True)
     listing = changes.add_parser('list')
     listing.add_argument('--query', required=True)
@@ -40,6 +43,8 @@ def parser():
 
 def dispatch(args, config):
     cfg = gerrit_config(config, args.server)
+    if args.command == 'doctor':
+        return result('SUCCESS', connection_info(cfg, args.timeout))
     gerrit = Gerrit(Client(cfg['base_url'], cfg.get('auth', {'type': 'none'}), args.timeout,
                           transport=cfg.get('transport')))
     if args.command == 'upload':
@@ -76,7 +81,8 @@ def main(argv=None):
         args = parser().parse_args(argv)
         if args.command == 'upload' and args.execute and not args.operation_id:
             raise CliError('INPUT', '--execute requires --operation-id for result reconciliation.')
-        output = dispatch(args, load_config(args.config))
+        output = (initialize(args) if args.command == 'config'
+                  else dispatch(args, load_config(config_path(args.config))))
         code = 0 if output['status'] == 'SUCCESS' else (6 if output['status'] == 'UNKNOWN' else EXIT_CODES.get((output.get('error') or {}).get('code'), 5))
     except CliError as exc:
         code = EXIT_CODES.get(exc.code, 7)
