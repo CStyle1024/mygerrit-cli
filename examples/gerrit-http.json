@@ -1,0 +1,11 @@
+{
+  "gerrit": {
+    "base_url": "http://review.rnd.meizu.com",
+    "project": "app/Client/AutoSecureService",
+    "transport": {
+      "allow_http": true,
+      "allow_http_credentials": false
+    },
+    "auth": {"type": "none"}
+  }
+}

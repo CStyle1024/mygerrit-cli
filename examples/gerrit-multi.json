@@ -1,0 +1,20 @@
+{
+  "gerrits": {
+    "app": {
+      "base_url": "http://review.rnd.meizu.com",
+      "transport": {"allow_http": true, "allow_http_credentials": true},
+      "auth": {"type": "basic", "username_env": "GERRIT_APP_USER", "password_env": "GERRIT_APP_PASSWORD"},
+      "commit_template": "{issue_key}: {summary}\n\nCause: {root_cause}\n\nTests: {tests}"
+    },
+    "aosp": {
+      "base_url": "http://gerrit-master.rnd.meizu.com",
+      "transport": {"allow_http": true, "allow_http_credentials": true},
+      "auth": {"type": "basic", "username_env": "GERRIT_AOSP_USER", "password_env": "GERRIT_AOSP_PASSWORD"},
+      "commit_template": "{issue_key}: {summary}\n\nCause: {root_cause}\n\nTests: {tests}"
+    }
+  },
+  "repositories": [
+    {"path": "/home/meizu/work/code/auto/projects/AutoSecureService", "gerrit": "app", "project": "app/Client/AutoSecureService", "remote": "origin", "target_branch": "REPLACE"},
+    {"path": "/media/meizu/suicong/work/code/E06_KO11_FM/System_OSS_PROP/frameworks/base", "gerrit": "aosp", "project": "platform/frameworks/base", "remote": "mz", "target_branch": "REPLACE"}
+  ]
+}

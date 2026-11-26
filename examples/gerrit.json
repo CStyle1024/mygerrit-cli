@@ -1,0 +1,11 @@
+{
+  "gerrit": {
+    "base_url": "https://gerrit.example.invalid",
+    "project": "platform/frameworks/base",
+    "auth": {
+      "type": "basic",
+      "username_env": "GERRIT_USERNAME",
+      "password_env": "GERRIT_HTTP_PASSWORD"
+    }
+  }
+}

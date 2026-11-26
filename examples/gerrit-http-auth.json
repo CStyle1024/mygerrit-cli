@@ -1,0 +1,14 @@
+{
+  "gerrit": {
+    "base_url": "http://review.rnd.meizu.com",
+    "transport": {
+      "allow_http": true,
+      "allow_http_credentials": true
+    },
+    "auth": {
+      "type": "basic",
+      "username_env": "GERRIT_USERNAME",
+      "password_env": "GERRIT_HTTP_PASSWORD"
+    }
+  }
+}
