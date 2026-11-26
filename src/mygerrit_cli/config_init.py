@@ -1,7 +1,10 @@
 """交互式初始化独立连接配置。"""
+import getpass
 import os
 import re
 import sys
+import tempfile
+import warnings
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -40,20 +43,48 @@ def env_ref(label):
     return name
 
 
-def auth_config():
+def read_hidden(label):
+    # 无法关闭回显时，在 getpass 回退到普通输入之前中止。
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', getpass.GetPassWarning)
+            return getpass.getpass(label)
+    except (getpass.GetPassWarning, EOFError, OSError):
+        raise CliError('INPUT', 'Cannot read a hidden credential from this terminal.')
+
+
+def auth_config(use_env):
     mode = ask('Authentication (bearer/basic)')
     if mode == 'bearer':
-        return {'type': mode, 'token_env': env_ref('Token environment variable')}
+        if use_env:
+            return {'type': mode, 'token_env': env_ref('Token environment variable')}, None
+        return {'type': mode}, read_hidden('Gerrit token (hidden): ').strip()
     if mode == 'basic':
-        return {'type': mode, 'username_env': env_ref('Username environment variable'),
-                'password_env': env_ref('Password or API token environment variable')}
+        if use_env:
+            return {'type': mode, 'username_env': env_ref('Username environment variable'),
+                    'password_env': env_ref('Password or API token environment variable')}, None
+        return {'type': mode, 'username': ask('Gerrit username')}, read_hidden('Gerrit password (hidden): ')
     raise CliError('INPUT', 'Authentication must be bearer or basic.')
+
+
+def save_credential(directory, credential):
+    fd, filename = tempfile.mkstemp(prefix='gerrit-credential-', dir=str(directory))
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+            stream.write(credential)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except BaseException:
+        Path(filename).unlink()
+        raise
+    return filename
 
 
 def add_commands(commands):
     sub = commands.add_parser('config', help='Manage standalone connection configuration')
-    sub.add_subparsers(dest='config_command', required=True).add_parser(
+    init = sub.add_subparsers(dest='config_command', required=True).add_parser(
         'init', help='Verify a connection and save credentials by reference')
+    init.add_argument('--auth-env', action='store_true', help='Use environment variable references')
 
 
 def initialize(args):
@@ -71,9 +102,9 @@ def initialize(args):
         raise CliError('INPUT', 'Invalid service URL.')
     if parsed.scheme not in ('http', 'https') or not parsed.hostname:
         raise CliError('INPUT', 'Enter an HTTP(S) REST base URL.')
-    auth = auth_config()
+    auth, credential = auth_config(args.auth_env)
     section = {'base_url': url.rstrip('/'), 'auth': auth}
-    metadata, server = probe(args, section, parsed)
+    metadata, server = probe(args, section, parsed, credential)
     with file_lock(str(path) + '.lock'):
         config = load_config(str(path)) if path.exists() else {}
         target = target_section(config, server)
@@ -85,12 +116,26 @@ def initialize(args):
             # 重新初始化时以这次验证的传输策略为准。
             if parsed.scheme != 'http':
                 section.pop('transport', None)
+        saved = None
+        if credential is not None:
+            field = 'token_file' if auth['type'] == 'bearer' else 'password_file'
+            saved = save_credential(path.parent, credential)
+            section['auth'][field] = saved
         target[0][target[1]] = section
-        write_json_atomic(str(path), config)
+        try:
+            write_json_atomic(str(path), config)
+        except BaseException:
+            # 替换后若目录同步失败，仍保留已被配置引用的新凭据。
+            if saved is not None:
+                current = load_config(str(path)) if path.exists() else {}
+                selected = current.get('gerrit', {}) if server is None else current.get('gerrits', {}).get(server, {})
+                if selected.get('auth', {}).get(field) != saved:
+                    Path(saved).unlink()
+            raise
     return result('SUCCESS', {'config': str(path), 'server': server, **metadata})
 
 
-def probe(args, section, parsed):
+def probe(args, section, parsed, credential):
     server = args.server or ask('Gerrit server name (blank for a single server)')
     if server and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]*', server):
         raise CliError('INPUT', 'Use letters, digits, dots, underscores or hyphens for the server name.')
@@ -98,12 +143,12 @@ def probe(args, section, parsed):
         if ask('HTTP sends credentials unencrypted. Type yes to allow it for this origin') != 'yes':
             raise CliError('INPUT', 'Use HTTPS or explicitly confirm HTTP for this origin.')
         section['transport'] = {'allow_http': True, 'allow_http_credentials': True}
-    return connection_info(section, args.timeout), server or None
+    return connection_info(section, args.timeout, credential), server or None
 
 
-def connection_info(section, timeout):
+def connection_info(section, timeout, credential=None):
     client = Client(section['base_url'], section.get('auth', {'type': 'none'}), timeout,
-                    transport=section.get('transport'))
+                    transport=section.get('transport'), credential=credential)
     prefix = '/a' if client.authorization else ''
     identity = client.request('GET', prefix + '/accounts/self')
     if not isinstance(identity, dict) or type(identity.get('_account_id')) is not int:

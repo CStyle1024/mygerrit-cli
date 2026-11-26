@@ -1,6 +1,6 @@
 # mygerrit-cli
 
-独立的 Gerrit CLI，不依赖 issue-resolver 或兄弟项目源码。Python >=3.8，Linux，运行时使用标准库。
+独立的 Gerrit CLI，不依赖 issue-resolver 或兄弟项目源码。Python >=3.8，Linux，YAML 输出由 PyYAML 提供。
 
 ## 安装
 
@@ -29,18 +29,20 @@ mygerrit-cli --tool-info
 
 ### 交互式初始化
 
-在终端中先加载已有的认证环境变量，再运行：
+在终端运行：
 
 ```bash
 mygerrit-cli config init
 mygerrit-cli doctor
 ```
 
-向导询问 REST 地址、认证方式和环境变量名。Bearer 需要 token 变量名，Basic 需要用户名和密码或 API token 的变量名。验证成功后配置保存在 `${XDG_CONFIG_HOME:-$HOME/.config}/mygerrit-cli/config.json`，文件仅保存引用。以后执行命令时仍要提供对应的环境变量。
+向导询问 REST 地址和认证方式。Bearer 隐藏输入 token，Basic 回显用户名并隐藏输入密码。验证成功后，凭据保存在独立配置目录下权限为 `0600` 的文件中，`${XDG_CONFIG_HOME:-$HOME/.config}/mygerrit-cli/config.json` 只保存凭据文件路径。
+
+如果使用已有的环境变量，运行 `mygerrit-cli config init --auth-env`，向导会询问变量名。
 
 留空服务器名称可建立单服务配置。使用名称可登记多台 Gerrit，之后通过 `mygerrit-cli --server NAME doctor` 或相应查询命令选择。现有独立单服务配置在添加具名服务器时保留为 `default`。探测仅使用 REST。内网 HTTP 发送凭据需要显式确认，Git 远端及 SSH 设置仍由仓库管理。
 
-普通命令的配置优先级为 `--config`、`ISSUE_RESOLVER_CONFIG`、独立配置、当前目录的 `project.json`。初始化始终只写独立配置。身份验证不检查写入权限。
+普通命令的配置优先级为 `--config`、`ISSUE_RESOLVER_CONFIG`、独立配置、当前目录的 `project.json`。初始化始终只写独立配置。身份验证不检查写入权限。运行 `mygerrit-cli doctor --format yaml` 可查看完整 YAML 响应，默认输出仍为 JSON。
 
 
 使用 `--config /absolute/path/config.json`，或设置 `ISSUE_RESOLVER_CONFIG`；默认读取当前目录的 project.json。可使用完整工作流配置，也可只包含 gerrit 服务配置。认证使用环境变量或文件引用，不把凭据写进 JSON。

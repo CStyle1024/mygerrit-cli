@@ -52,7 +52,7 @@ class SafeRedirect(HTTPRedirectHandler):
 
 
 class Client:
-    def __init__(self, base_url: str, auth: dict, timeout: float, transport=None):
+    def __init__(self, base_url: str, auth: dict, timeout: float, transport=None, *, credential=None):
         transport = {} if transport is None else transport
         if (not isinstance(transport, dict) or set(transport) - {'allow_http', 'allow_http_credentials'}
                 or any(type(value) is not bool for value in transport.values())):
@@ -77,13 +77,15 @@ class Client:
         if (parsed.scheme == 'http' and parsed.hostname not in ('localhost', '127.0.0.1', '::1')
                 and auth_type != 'none' and not transport.get('allow_http_credentials', False)):
             raise CliError('INPUT', 'Credentials over remote HTTP require allow_http_credentials=true; HTTP is unencrypted.')
+        if credential is not None and (not credential or '\r' in credential or '\n' in credential):
+            raise CliError('AUTH_REQUIRED', 'Configured credential is missing or invalid.')
         if auth_type == 'bearer':
-            self.authorization = 'Bearer ' + secret(auth, 'token')
+            self.authorization = 'Bearer ' + (secret(auth, 'token') if credential is None else credential)
         elif auth_type == 'basic':
             username = auth.get('username') or os.environ.get(auth.get('username_env', ''), '')
             if not isinstance(username, str) or not username or ':' in username or '\n' in username or '\r' in username:
                 raise CliError('INPUT', 'Basic authentication needs a valid username.')
-            raw = (username + ':' + secret(auth, 'password')).encode()
+            raw = (username + ':' + (secret(auth, 'password') if credential is None else credential)).encode()
             self.authorization = 'Basic ' + base64.b64encode(raw).decode('ascii')
         elif auth_type != 'none':
             raise CliError('INPUT', 'Unsupported authentication type; use none, bearer or basic.')

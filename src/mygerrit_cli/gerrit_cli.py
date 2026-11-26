@@ -93,7 +93,12 @@ def main(argv=None):
         code, output = 6, result('UNKNOWN', error={'code': 'RESULT_UNKNOWN', 'message': 'Interrupted; inspect receipts before retrying.'})
     except Exception:
         code, output = 7, result('FAILED', error={'code': 'LOCAL_ERROR', 'message': 'Local Gerrit operation failed; check configuration and inputs.'})
-    print(json.dumps(output, ensure_ascii=False, indent=2 if args and args.format == 'text' else None))
+    if args and args.format == 'yaml':
+        import yaml
+
+        print(yaml.safe_dump(output, allow_unicode=True, sort_keys=False), end='')
+    else:
+        print(json.dumps(output, ensure_ascii=False, indent=2 if args and args.format == 'text' else None))
     return code
 
 

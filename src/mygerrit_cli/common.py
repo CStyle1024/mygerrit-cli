@@ -19,7 +19,7 @@ class Parser(argparse.ArgumentParser):
         kwargs.setdefault('allow_abbrev', False)
         super().__init__(*args, **kwargs)
         self.add_argument('--config', default=argparse.SUPPRESS, help='Project JSON file (or ISSUE_RESOLVER_CONFIG)')
-        self.add_argument('--format', choices=('json', 'text'), default=argparse.SUPPRESS)
+        self.add_argument('--format', choices=('json', 'text', 'yaml'), default=argparse.SUPPRESS)
         self.add_argument('--timeout', type=float, default=argparse.SUPPRESS)
         self.add_argument('--state-dir', default=argparse.SUPPRESS, help='Local operation records')
 
@@ -142,7 +142,12 @@ def secret(auth: dict, name: str) -> str:
     if bool(env_name) == bool(filename):
         raise CliError('INPUT', 'Configure exactly one credential environment or file reference.')
     try:
-        value = os.environ.get(env_name, '') if env_name else Path(filename).expanduser().read_text(encoding='utf-8').strip()
+        if env_name:
+            value = os.environ.get(env_name, '')
+        else:
+            raw = Path(filename).expanduser().read_text(encoding='utf-8')
+            # 密码首尾空格可能是凭据的一部分，只移除文件末尾的换行。
+            value = raw.rstrip('\r\n') if name == 'password' else raw.strip()
     except (OSError, ValueError, TypeError):
         raise CliError('AUTH_REQUIRED', 'Cannot read the configured credential reference.')
     if not value or '\r' in value or '\n' in value:
